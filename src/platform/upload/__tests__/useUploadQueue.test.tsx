@@ -14,9 +14,8 @@ describe('useUploadQueue', () => {
     act(() => result.current.enqueue('file:///photo-1.jpg'));
 
     await waitFor(() => expect(result.current.items[0].status).toBe('done'));
-    expect(uploadSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ jobId: 'job-1', uri: 'file:///photo-1.jpg' }),
-    );
+    expect(uploadSpy).toHaveBeenCalledTimes(1);
+    expect(uploadSpy.mock.calls[0][0]).toMatchObject({ jobId: 'job-1', uri: 'file:///photo-1.jpg' });
     expect(result.current.items[0].attempts).toBe(1);
   });
 
