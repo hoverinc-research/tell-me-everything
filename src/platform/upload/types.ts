@@ -6,5 +6,6 @@ export type UploadItem = {
   uri: string;
   status: UploadStatus;
   attempts: number;
+  progress: number;
   lastError?: string;
 };

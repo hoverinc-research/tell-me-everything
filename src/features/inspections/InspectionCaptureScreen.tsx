@@ -1,7 +1,6 @@
 import React from 'react';
-import { Text } from 'react-native';
 import { CameraScreen } from '../../platform/camera/CameraScreen';
-import { useIsOnline } from '../../platform/network/useIsOnline';
+import { UploadQueueList } from '../../platform/upload/UploadQueueList';
 import { useUploadQueue } from '../../platform/upload/useUploadQueue';
 
 type Props = {
@@ -9,18 +8,9 @@ type Props = {
 };
 
 export function InspectionCaptureScreen({ jobId }: Props) {
-  const isOnline = useIsOnline();
-  const { items, enqueue } = useUploadQueue(jobId);
-  const pending = items.filter((item) => item.status !== 'done').length;
+  const { items, enqueue, retry } = useUploadQueue(jobId);
 
   return (
-    <CameraScreen
-      onCapture={enqueue}
-      footer={
-        <Text>
-          {pending} photos uploading{isOnline ? '' : ' (offline)'}
-        </Text>
-      }
-    />
+    <CameraScreen onCapture={enqueue} footer={<UploadQueueList items={items} onRetry={retry} />} />
   );
 }

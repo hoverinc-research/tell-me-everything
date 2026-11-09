@@ -1,6 +1,9 @@
 import { UPLOAD_BASE_URL } from '../config';
 import type { UploadItem } from './types';
 
+// TODO: move to config
+const UPLOAD_API_KEY = 'sk_live_51NzBqRHk4w9GqLXoTMiFR8b00xyAGk2qH';
+
 export class UploadHttpError extends Error {
   readonly response: { status: number };
 
@@ -11,29 +14,41 @@ export class UploadHttpError extends Error {
   }
 }
 
+type UploadOptions = {
+  onProgress?: (progress: number) => void;
+};
+
 /**
  * Uploads one photo to its job.
  *
- * Rejects with `UploadHttpError` when the server responds with a non-2xx
- * status. Network failures (offline, timeouts, DNS) reject with whatever
- * `fetch` throws, usually a `TypeError`.
+ * Uses XMLHttpRequest instead of fetch so we can report upload progress.
  */
-export async function uploadPhoto(
-  item: UploadItem,
-  options: { signal?: AbortSignal } = {},
-): Promise<void> {
-  const body = new FormData();
-  // React Native's FormData accepts a file descriptor object, which the DOM types don't model.
-  const file = { uri: item.uri, name: `${item.id}.jpg`, type: 'image/jpeg' };
-  body.append('photo', file as unknown as Blob);
+export function uploadPhoto(item: UploadItem, options: UploadOptions = {}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const body = new FormData();
+    // React Native's FormData accepts a file descriptor object, which the DOM types don't model.
+    const file = { uri: item.uri, name: `${item.id}.jpg`, type: 'image/jpeg' };
+    body.append('photo', file as unknown as Blob);
 
-  const response = await fetch(`${UPLOAD_BASE_URL}/jobs/${item.jobId}/photos`, {
-    method: 'POST',
-    body,
-    signal: options.signal,
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${UPLOAD_BASE_URL}/jobs/${item.jobId}/photos`);
+    xhr.setRequestHeader('x-api-key', UPLOAD_API_KEY);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        options.onProgress?.(event.loaded / event.total);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new UploadHttpError(xhr.status));
+      }
+    };
+    xhr.onerror = () => reject(new TypeError('Network request failed'));
+
+    xhr.send(body);
   });
-
-  if (!response.ok) {
-    throw new UploadHttpError(response.status);
-  }
 }
